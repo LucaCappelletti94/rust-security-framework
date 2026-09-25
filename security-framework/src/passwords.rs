@@ -248,6 +248,27 @@ mod test {
         delete_generic_password(name, name).expect("delete_generic_password");
     }
 
+    #[cfg(feature = "local-authentication")]
+    #[test]
+    fn roundtrip_generic_with_authentication_context() {
+        use crate::authentication_context::AuthenticationContext;
+
+        let name = "roundtrip_generic_with_authentication_context";
+        let options = |context: &AuthenticationContext| {
+            let mut options = PasswordOptions::new_generic_password(name, name);
+            options.set_authentication_context(context);
+            options
+        };
+        let context = AuthenticationContext::new();
+        set_generic_password_options(b"first", options(&context)).expect("set_generic_password_options");
+        set_generic_password_options(b"second", options(&context)).expect("set_generic_password_options");
+
+        let shared = context.clone();
+        let pass = std::thread::spawn(move || generic_password(options(&shared))).join().unwrap();
+        assert_eq!(pass.expect("generic_password"), b"second");
+        delete_generic_password_options(options(&context)).expect("delete_generic_password_options");
+    }
+
     #[test]
     fn roundtrip_generic_with_local_authentication_context() {
         use core_foundation::base::CFType;
